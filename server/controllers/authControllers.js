@@ -31,12 +31,22 @@ const hashedPassword=await bcrypt.hash(password,salt);
     const otp=Math.floor(100000+Math.random()*900000).toString();
     console.log(`OTP for ${email}: ${otp}`);
 
-    await OTP.create({email,otp,action:'account_verification'});
-    await sendOtpEmail(email,otp,'account_verification');
+    // await OTP.create({email,otp,action:'account_verification'});
+    // await sendOtpEmail(email,otp,'account_verification');
 
-      res.status(201).json({message:'user registerd successfully',
-        email:user.email
-      });
+    //   res.status(201).json({message:'user registerd successfully',
+    //     email:user.email
+    //   });
+    await OTP.create({ email, otp, action: "account_verification" });
+
+sendOtpEmail(email, otp, "account_verification").catch((err) => {
+  console.log("Email send failed:", err.message);
+});
+
+res.status(201).json({
+  message: "User registered successfully. OTP sent.",
+  email: user.email,
+});
 
 
   

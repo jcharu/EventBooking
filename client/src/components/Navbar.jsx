@@ -16,7 +16,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-center py-4 gap-4">
           <Link to="/" className="text-white text-2xl font-bold flex items-center gap-2">
-          <FaTicketAlt />EventBooking</Link>
+          <FaTicketAlt />Eventora</Link>
           
           <div className="flex flex-wrap  justify-between items-center  gap-4 sm:gap-6 ">
             <Link to="/" className="text-gray-200 hover:text-white transition cursor-pointer">Events</Link>

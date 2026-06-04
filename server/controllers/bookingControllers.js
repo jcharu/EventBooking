@@ -19,17 +19,20 @@ exports.sendBookingOTP = async (req, res) => {
       action: "event_booking",
     });
 
+    
     await OTP.create({
-      email: req.user.email,
-      otp,
-      action: "event_booking",
-    });
+  email: req.user.email,
+  otp,
+  action: "event_booking",
+});
 
-    await sendOtpEmail(req.user.email, otp, "event_booking");
+sendOtpEmail(req.user.email, otp, "event_booking").catch((err) => {
+  console.log("Booking OTP email failed:", err.message);
+});
 
-    res.json({
-      message: "OTP sent. Check terminal if email does not arrive.",
-    });
+res.json({
+  message: "OTP sent. Check email or terminal.",
+});
   } catch (error) {
     console.log("Send booking OTP error:", error);
     res.status(500).json({ error: error.message });
@@ -69,38 +72,82 @@ exports.bookEvent=async(req,res)=>{
   res.status(201).json({message:'booking created.plz check ur email'});
 }
 
-  exports.confirmBooking=async(req,res)=>{
-    const paymentStatus=req.body.paymentStatus;
-    if(!['paid','non_paid'].includes(paymentStatus)){
-      return res.status(400).json({error:"invaild payment status"});
-    }
-    const booking=await Booking.findById(req.params.id).populate('eventId');
-    if(!booking){
-      return res.status(404).json({error:'Booking not founund'});
+
+
+
+
+
+exports.confirmBooking = async (req, res) => {
+  try {
+    const { paymentStatus } = req.body;
+
+    if (!["paid", "non_paid"].includes(paymentStatus)) {
+      return res.status(400).json({
+        error: "Invalid payment status",
+      });
     }
 
-    if(booking.status==='confirmed'){
-      return res.status(400).json({error:'Booking is already confirmed'});
-    }
-const event=await Event.findById(booking.eventId._id);
-    if(event.totalSeats<=0){
-      return res.status(400).json({error:'no seats avaiable'});
+    const booking = await Booking.findById(req.params.id)
+      .populate("eventId")
+      .populate("userId", "name email");
+
+    if (!booking) {
+      return res.status(404).json({
+        error: "Booking not found",
+      });
     }
 
-    booking.status='confirmed';
-
-    if(paymentStatus){
-      booking.paymentStatus=paymentStatus;
+    if (booking.status === "confirmed") {
+      return res.status(400).json({
+        error: "Booking is already confirmed",
+      });
     }
+
+    if (booking.status === "cancelled") {
+      return res.status(400).json({
+        error: "Cancelled booking cannot be confirmed",
+      });
+    }
+
+    const event = await Event.findById(booking.eventId._id);
+
+    if (!event) {
+      return res.status(404).json({
+        error: "Event not found",
+      });
+    }
+
+    if (event.availableSeats <= 0) {
+      return res.status(400).json({
+        error: "No seats available",
+      });
+    }
+
+    booking.status = "confirmed";
+    booking.paymentStatus = paymentStatus;
     await booking.save();
-    event.tatalSeats -=1;
+
+    event.availableSeats -= 1;
     await event.save();
 
-    await sendBookingEmail(req.user.email,event.title,booking._id);
+    sendBookingEmail(
+      booking.userId.email,
+      booking.userId.name,
+      event.title
+    ).catch((err) => {
+      console.log("Booking confirmation email failed:", err.message);
+    });
 
-    res.json({message:'booking confirmed'});
-
+    res.json({
+      message: "Booking confirmed successfully",
+      booking,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+    });
   }
+};
 
   exports.getMyBookings=async(req,res)=>{
     const bookings=await Booking.find({userId:req.user._id}).populate('eventId');
